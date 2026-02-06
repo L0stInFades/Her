@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [preferredModel, setPreferredModel] = useState('openai/gpt-4o');
   const [availableModels, setAvailableModels] = useState<PublicConfig['models']>([]);
   const [allowUserApiKeys, setAllowUserApiKeys] = useState(true);
+  const [requireUserApiKey, setRequireUserApiKey] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -40,6 +41,7 @@ export default function SettingsPage() {
         const defaultModelId = configRes.data.defaultModelId || 'openai/gpt-4o';
         setAvailableModels(configRes.data.models || []);
         setAllowUserApiKeys(configRes.data.allowUserApiKeys);
+        setRequireUserApiKey(configRes.data.requireUserApiKey);
         setPreferredModel((prev) => prev || defaultModelId);
       }
 
@@ -70,7 +72,8 @@ export default function SettingsPage() {
 
       // Update user settings - only send API key if it was modified
       const settingsPayload: Record<string, string | null> = { preferredModel };
-      if (allowUserApiKeys && keyModified) {
+      const canByokNow = allowUserApiKeys && user?.plan === 'PRO_ART';
+      if (canByokNow && keyModified) {
         settingsPayload.openRouterApiKey = openRouterApiKey || null;
       }
       await api.patch('/users/settings', settingsPayload);
@@ -181,37 +184,53 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4">
-            {allowUserApiKeys && (
-              <div>
-              <label className="mb-2 block text-sm font-medium text-warm-700 dark:text-warm-300">
-                OpenRouter API Key
-              </label>
-              <input
-                type="password"
-                value={openRouterApiKey}
-                onChange={(e) => {
-                  setOpenRouterApiKey(e.target.value);
-                  setKeyModified(true);
-                }}
-                placeholder={hasExistingKey ? 'API key is set (leave empty to keep current)' : 'sk-or-...'}
-                className="input"
-              />
-              {hasExistingKey && !keyModified && (
-                <p className="mt-1 text-xs text-jade-600 dark:text-jade-400">
-                  An API key is already configured. Enter a new value to replace it.
+            {allowUserApiKeys && user.plan !== 'PRO_ART' && (
+              <div className="rounded-2xl border-2 border-warm-200 bg-warm-50 p-4 dark:border-warm-700 dark:bg-warm-900/30">
+                <p className="text-sm font-medium text-warm-800 dark:text-warm-200">
+                  Bring your own OpenRouter key (BYOK) is available on <span className="font-semibold">ProArt</span> only.
                 </p>
-              )}
-              <p className="mt-1 text-xs text-warm-500 dark:text-warm-400">
-                Optional. Leave empty to use the default API key. Get your key at{' '}
-                <a
-                  href="https://openrouter.ai/keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-jade-600 hover:underline dark:text-jade-400"
-                >
-                  openrouter.ai
-                </a>
-              </p>
+                <p className="mt-1 text-xs text-warm-600 dark:text-warm-400">
+                  If you already have ProArt, ask an admin to assign your plan.
+                </p>
+              </div>
+            )}
+
+            {allowUserApiKeys && user.plan === 'PRO_ART' && (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-warm-700 dark:text-warm-300">
+                  OpenRouter API Key
+                </label>
+                <input
+                  type="password"
+                  value={openRouterApiKey}
+                  onChange={(e) => {
+                    setOpenRouterApiKey(e.target.value);
+                    setKeyModified(true);
+                  }}
+                  placeholder={hasExistingKey ? 'API key is set (leave empty to keep current)' : 'sk-or-...'}
+                  className="input"
+                />
+                {hasExistingKey && !keyModified && (
+                  <p className="mt-1 text-xs text-jade-600 dark:text-jade-400">
+                    An API key is already configured. Enter a new value to replace it.
+                  </p>
+                )}
+                {requireUserApiKey && (
+                  <p className="mt-1 text-xs text-red-700 dark:text-red-400">
+                    Server policy requires ProArt users to set their own API key.
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-warm-500 dark:text-warm-400">
+                  Leave empty to keep using the server key (unless server policy requires BYOK). Get your key at{' '}
+                  <a
+                    href="https://openrouter.ai/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-jade-600 hover:underline dark:text-jade-400"
+                  >
+                    openrouter.ai
+                  </a>
+                </p>
               </div>
             )}
 

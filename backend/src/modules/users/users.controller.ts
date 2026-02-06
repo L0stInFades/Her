@@ -67,6 +67,9 @@ export class UsersController {
     if (!config.allowUserApiKeys && body.openRouterApiKey !== undefined) {
       throw new BadRequestException('User API keys are disabled by server policy');
     }
+    if (body.openRouterApiKey !== undefined && user.plan !== 'PRO_ART') {
+      throw new BadRequestException('BYOK is available on ProArt only');
+    }
 
     const settings = await this.usersService.updateUserSettings(user.id, body);
     return {

@@ -285,7 +285,7 @@ export default function AdminPage() {
                   onChange={(checked) => setConfig({ ...config, enforceUsageLimits: checked })}
                 />
                 <p className="text-xs text-warm-500 dark:text-warm-400">
-                  If required, users must set their own key in Settings. Otherwise the server default key can be used.
+                  If required, ProArt users must set their own key in Settings (BYOK). Art users can continue using the server key.
                 </p>
               </div>
             </div>

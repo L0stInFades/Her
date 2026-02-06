@@ -92,9 +92,11 @@ export class MessagesController {
 
     // Get user's API key (decrypted)
     const userSettings = await this.usersService.getUserSettingsDecrypted(user.id);
-    const userApiKey = appConfig.allowUserApiKeys ? userSettings?.openRouterApiKey ?? undefined : undefined;
-    if (appConfig.requireUserApiKey && !userApiKey) {
-      return res.status(400).json({ error: 'User API key is required by server policy' });
+    const canByok = user.plan === 'PRO_ART' && appConfig.allowUserApiKeys;
+    const userApiKey = canByok ? userSettings?.openRouterApiKey ?? undefined : undefined;
+    // Server policy: can require BYOK for ProArt while still allowing Art to use the server key.
+    if (appConfig.requireUserApiKey && user.plan === 'PRO_ART' && !userApiKey) {
+      return res.status(400).json({ error: 'User API key is required for ProArt by server policy' });
     }
     const apiKey = userApiKey;
     let selectedModel = model || conversation.model || userSettings?.preferredModel || 'openai/gpt-4o';
