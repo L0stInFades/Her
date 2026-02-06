@@ -1,0 +1,29 @@
+{
+  "name": "her",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Her - Your warm, intelligent AI companion",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter ./frontend dev\" \"pnpm --filter ./backend start:dev\"",
+    "dev:frontend": "pnpm --filter ./frontend dev",
+    "dev:backend": "pnpm --filter ./backend start:dev",
+    "build": "pnpm --filter ./frontend build && pnpm --filter ./backend build",
+    "build:frontend": "pnpm --filter ./frontend build",
+    "build:backend": "pnpm --filter ./backend build",
+    "lint": "pnpm --filter ./frontend lint && pnpm --filter ./backend lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:migrate": "pnpm --filter ./backend prisma migrate dev",
+    "db:generate": "pnpm --filter ./backend prisma generate",
+    "db:push": "pnpm --filter ./backend prisma db push",
+    "db:studio": "pnpm --filter ./backend prisma studio"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

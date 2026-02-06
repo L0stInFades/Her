@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: her-postgres
+    environment:
+      POSTGRES_DB: her_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend service (production)
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: her-backend
+  #   environment:
+  #     DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/her_db
+  #     JWT_SECRET: ${JWT_SECRET}
+  #     ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+  #     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+  #     NODE_ENV: production
+  #   ports:
+  #     - '127.0.0.1:3001:3001'
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+  # Frontend service (production)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: her-frontend
+  #   environment:
+  #     NEXT_PUBLIC_API_URL: http://backend:3001
+  #     NEXT_PUBLIC_APP_NAME: Her
+  #   ports:
+  #     - '127.0.0.1:3000:3000'
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

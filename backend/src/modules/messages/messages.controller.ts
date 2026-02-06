@@ -1,0 +1,149 @@
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Req,
+  Res,
+  HttpException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
+import { MessagesService } from './messages.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import { AiService } from '../ai/ai.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
+import { SendMessageDto } from './dto/send-message.dto';
+
+const MAX_CONTEXT_MESSAGES = 50;
+
+@Controller('messages')
+@UseGuards(JwtAuthGuard)
+export class MessagesController {
+  constructor(
+    private messagesService: MessagesService,
+    private aiService: AiService,
+    private prisma: PrismaService,
+    private usersService: UsersService,
+  ) {}
+
+  @Post('stream')
+  async streamMessage(
+    @GetUser() user: any,
+    @Body() body: SendMessageDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const { conversationId, content, model } = body;
+
+    // Get conversation
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: MAX_CONTEXT_MESSAGES,
+        },
+      },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (conversation.userId !== user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Create user message
+    await this.prisma.message.create({
+      data: {
+        conversationId,
+        role: 'user',
+        content,
+      },
+    });
+
+    // Prepare messages for AI (reverse back to chronological order)
+    const aiMessages = conversation.messages.reverse().map((msg) => ({
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content,
+    }));
+
+    aiMessages.push({
+      role: 'user',
+      content,
+    });
+
+    // Get user's API key (decrypted)
+    const userSettings = await this.usersService.getUserSettingsDecrypted(user.id);
+    const apiKey = userSettings?.openRouterApiKey ?? undefined;
+    const selectedModel = model || conversation.model || userSettings?.preferredModel || 'openai/gpt-4o';
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    let fullContent = '';
+    let completed = false;
+
+    // Abort upstream request when client disconnects
+    const abortController = new AbortController();
+    req.on('close', () => {
+      abortController.abort();
+    });
+
+    try {
+      await this.aiService.streamChatCompletion(
+        aiMessages,
+        selectedModel,
+        apiKey,
+        (chunk) => {
+          if (abortController.signal.aborted) return;
+          fullContent += chunk;
+          res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+        },
+        () => {
+          if (completed) return;
+          completed = true;
+
+          // Stream complete - save the assistant message
+          this.prisma.message
+            .create({
+              data: {
+                conversationId,
+                role: 'assistant',
+                content: fullContent,
+              },
+            })
+            .catch((error) => {
+              console.error('Failed to save message:', error);
+            });
+
+          res.write('data: [DONE]\n\n');
+          res.end();
+        },
+        (error) => {
+          if (completed) return;
+          completed = true;
+
+          console.error('Stream error:', error?.message || 'Unknown error');
+          res.write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
+          res.end();
+        },
+        abortController.signal,
+      );
+    } catch (error) {
+      if (completed) return;
+      completed = true;
+
+      console.error('AI error:', error?.message || 'Unknown error');
+      res.write(`data: ${JSON.stringify({ error: 'Failed to generate response' })}\n\n`);
+      res.end();
+    }
+  }
+}
