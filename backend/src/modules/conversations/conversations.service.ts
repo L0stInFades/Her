@@ -9,6 +9,7 @@ interface CreateConversationDto {
 
 interface UpdateConversationDto {
   title?: string;
+  model?: string;
 }
 
 @Injectable()
