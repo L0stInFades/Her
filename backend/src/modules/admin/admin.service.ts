@@ -155,19 +155,37 @@ export class AdminService {
   }
 
   async listUsers() {
-    return this.prisma.user.findMany({
+    const config = await this.appConfigService.getConfig();
+    const period = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}`;
+
+    const users = await this.prisma.user.findMany({
       orderBy: [{ createdAt: 'desc' }],
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        plan: true,
-        isBanned: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        usage: {
+          where: { period },
+          take: 1,
+        },
       },
     });
+
+    const plus = config.plusMonthlyUnits;
+    const limitFor = (plan: 'ART' | 'PRO_ART') => (plan === 'PRO_ART' ? plus * 8 : plus * 2);
+
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      plan: u.plan,
+      isBanned: u.isBanned,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+      currentPeriod: period,
+      monthlyUnitLimit: limitFor(u.plan as any),
+      unitsUsed: u.usage[0]?.unitsUsed || 0,
+      requestsUsed: u.usage[0]?.requestsUsed || 0,
+      estimatedTokensUsed: u.usage[0]?.estimatedTokensUsed || 0,
+    }));
   }
 
   async updateUser(id: string, dto: UpdateUserDto) {
@@ -176,22 +194,15 @@ export class AdminService {
       throw new BadRequestException('Invalid plan');
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: {
         isBanned: dto.isBanned,
         plan: plan as any,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        plan: true,
-        isBanned: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: { id: true, email: true, name: true, role: true, plan: true, isBanned: true, createdAt: true, updatedAt: true },
     });
+
+    return updated;
   }
 }

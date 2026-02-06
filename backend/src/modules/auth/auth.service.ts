@@ -146,6 +146,9 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
+      if (user.isBanned) {
+        throw new ForbiddenException('Account is disabled');
+      }
 
       // Delete old refresh token (one-time use rotation)
       await this.prisma.refreshToken.delete({

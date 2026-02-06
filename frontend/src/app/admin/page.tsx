@@ -41,6 +41,11 @@ type AdminUser = {
   role: 'USER' | 'ADMIN';
   plan: 'ART' | 'PRO_ART';
   isBanned: boolean;
+  currentPeriod: string;
+  monthlyUnitLimit: number;
+  unitsUsed: number;
+  requestsUsed: number;
+  estimatedTokensUsed: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -455,6 +460,7 @@ export default function AdminPage() {
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Email</th>
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Role</th>
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Plan</th>
+                    <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Usage</th>
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Status</th>
                   </tr>
                 </thead>
@@ -479,6 +485,14 @@ export default function AdminPage() {
                         </select>
                       </td>
                       <td className="px-4 py-3">
+                        <div className="text-warm-700 dark:text-warm-300">
+                          {u.unitsUsed}/{u.monthlyUnitLimit} units
+                        </div>
+                        <div className="text-xs text-warm-500 dark:text-warm-400">
+                          {u.requestsUsed} req, {u.currentPeriod} UTC
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
                         <button
                           className={clsx(
                             'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
@@ -497,7 +511,7 @@ export default function AdminPage() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td className="px-4 py-6 text-warm-600 dark:text-warm-400" colSpan={4}>
+                      <td className="px-4 py-6 text-warm-600 dark:text-warm-400" colSpan={5}>
                         No users yet
                       </td>
                     </tr>
