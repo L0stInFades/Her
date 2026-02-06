@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useToast } from '@/components/ui/Toast';
 import { useChatShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { api } from '@/lib/api';
+import type { PublicConfig } from '@/lib/types';
 import { clsx } from 'clsx';
 
 export default function ChatPageEnhanced() {
@@ -34,6 +35,7 @@ export default function ChatPageEnhanced() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModel, setSelectedModel] = useState('openai/gpt-4o');
+  const [availableModels, setAvailableModels] = useState<PublicConfig['models']>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -61,6 +63,12 @@ export default function ChatPageEnhanced() {
 
       // Load conversations
       try {
+        const configRes = await api.get<PublicConfig>('/config');
+        if (configRes.success && configRes.data) {
+          setAvailableModels(configRes.data.models || []);
+          setSelectedModel(configRes.data.defaultModelId || 'openai/gpt-4o');
+        }
+
         await loadConversations();
         setIsLoading(false);
         // Use getState() to avoid stale closure
@@ -179,7 +187,8 @@ export default function ChatPageEnhanced() {
       api
         .patch(`/conversations/${currentConversation.id}`, { model: modelId })
         .then(() => {
-          success(`Model changed to ${MODELS.find((m) => m.id === modelId)?.name}`);
+          const name = availableModels.find((m) => m.id === modelId)?.name || modelId;
+          success(`Model changed to ${name}`);
           // Reload conversation to update model
           const updatedConversation = {
             ...currentConversation,
@@ -267,6 +276,12 @@ export default function ChatPageEnhanced() {
                 value={selectedModel}
                 onChange={handleModelChange}
                 disabled={isStreaming}
+                models={availableModels.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  provider: m.provider,
+                  description: m.description || '',
+                }))}
               />
             </div>
           </div>

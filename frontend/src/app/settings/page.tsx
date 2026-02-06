@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { api } from '@/lib/api';
-import type { UserSettings } from '@/lib/types';
+import type { PublicConfig, UserSettings } from '@/lib/types';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const [hasExistingKey, setHasExistingKey] = useState(false);
   const [keyModified, setKeyModified] = useState(false);
   const [preferredModel, setPreferredModel] = useState('openai/gpt-4o');
+  const [availableModels, setAvailableModels] = useState<PublicConfig['models']>([]);
+  const [allowUserApiKeys, setAllowUserApiKeys] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -33,6 +35,14 @@ export default function SettingsPage() {
 
   const loadSettings = async () => {
     try {
+      const configRes = await api.get<PublicConfig>('/config');
+      if (configRes.success && configRes.data) {
+        const defaultModelId = configRes.data.defaultModelId || 'openai/gpt-4o';
+        setAvailableModels(configRes.data.models || []);
+        setAllowUserApiKeys(configRes.data.allowUserApiKeys);
+        setPreferredModel((prev) => prev || defaultModelId);
+      }
+
       const response = await api.get<UserSettings>('/users/settings');
       if (response.success && response.data) {
         const settings = response.data;
@@ -60,7 +70,7 @@ export default function SettingsPage() {
 
       // Update user settings - only send API key if it was modified
       const settingsPayload: Record<string, string | null> = { preferredModel };
-      if (keyModified) {
+      if (allowUserApiKeys && keyModified) {
         settingsPayload.openRouterApiKey = openRouterApiKey || null;
       }
       await api.patch('/users/settings', settingsPayload);
@@ -171,7 +181,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <div>
+            {allowUserApiKeys && (
+              <div>
               <label className="mb-2 block text-sm font-medium text-warm-700 dark:text-warm-300">
                 OpenRouter API Key
               </label>
@@ -201,7 +212,8 @@ export default function SettingsPage() {
                   openrouter.ai
                 </a>
               </p>
-            </div>
+              </div>
+            )}
 
             <div>
               <label className="mb-2 block text-sm font-medium text-warm-700 dark:text-warm-300">
@@ -212,21 +224,19 @@ export default function SettingsPage() {
                 onChange={(e) => setPreferredModel(e.target.value)}
                 className="input"
               >
-                <option value="openai/gpt-4o">GPT-4o (Recommended)</option>
-                <option value="openai/gpt-4o-mini">GPT-4o Mini (Faster)</option>
-                <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
-                <option value="anthropic/claude-3-opus">
-                  Claude 3 Opus (Most Capable)
-                </option>
-                <option value="anthropic/claude-3-sonnet">
-                  Claude 3 Sonnet (Balanced)
-                </option>
-                <option value="anthropic/claude-3-haiku">
-                  Claude 3 Haiku (Fastest)
-                </option>
-                <option value="meta-llama/llama-3-70b-instruct">
-                  Llama 3 70B (Open Source)
-                </option>
+                {availableModels.length > 0 ? (
+                  availableModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.provider})
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="openai/gpt-4o">GPT-4o</option>
+                    <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+                  </>
+                )}
               </select>
               <p className="mt-1 text-xs text-warm-500 dark:text-warm-400">
                 Choose the AI model you prefer for conversations

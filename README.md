@@ -24,6 +24,18 @@ Notes:
 - Frontend defaults to same-origin `/api` so you can keep `NEXT_PUBLIC_API_URL` empty.
 - For first boot, you can set `AUTO_DB_PUSH=1` in `.env` to auto-apply the Prisma schema.
 
+## Admin Panel
+
+- URL: `/admin`
+- First admin:
+  - Set `ADMIN_BOOTSTRAP_TOKEN` in server `.env`
+  - Create a normal user via `/register`, then open `/admin` and paste the token to promote your account
+
+Admin capabilities:
+- Enable/disable models and set the default model
+- Control context size (`maxContextMessages`)
+- Control user API key policy (`allowUserApiKeys`, `requireUserApiKey`)
+
 > Your warm, intelligent AI companion
 
 Her is a modern AI chat application with a warm, elegant design inspired by the concept of "温润如玉" (warm and smooth like jade). Experience a chat companion that feels like conversing with a wise, understanding friend.

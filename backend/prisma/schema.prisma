@@ -10,12 +10,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
   password      String
   name          String?
   avatar        String?
+  role          UserRole  @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -85,4 +91,29 @@ model Message {
   metadata       Json?
 
   @@map("messages")
+}
+
+model AiModel {
+  // OpenRouter model id, e.g. "openai/gpt-4o"
+  id          String   @id
+  name        String
+  provider    String
+  description String?
+  enabled     Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ai_models")
+}
+
+model AppConfig {
+  id                 String   @id @default("default")
+  maxContextMessages Int      @default(50)
+  allowUserApiKeys   Boolean  @default(true)
+  requireUserApiKey  Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("app_config")
 }

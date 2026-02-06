@@ -14,6 +14,7 @@ RUN pnpm install --frozen-lockfile --filter ./backend...
 
 # Copy backend source and build
 COPY backend backend
+RUN pnpm --filter ./backend prisma:generate
 RUN pnpm --filter ./backend build
 
 WORKDIR /app/backend
@@ -21,4 +22,3 @@ EXPOSE 3001
 
 # Optional: push schema automatically on first boot (avoid for mature prod)
 CMD ["sh", "-lc", "if [ \"${AUTO_DB_PUSH:-0}\" = \"1\" ]; then pnpm prisma:push; fi; node dist/main.js"]
-

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { GetUser } from '../auth/decorators/get-user.decorator';
+import { AppConfigService } from '../app-config/app-config.service';
 
 interface CreateConversationDto {
   title?: string;
@@ -14,7 +14,17 @@ interface UpdateConversationDto {
 
 @Injectable()
 export class ConversationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private appConfigService: AppConfigService,
+  ) {}
+
+  private async assertModelEnabled(modelId: string) {
+    const model = await this.prisma.aiModel.findUnique({ where: { id: modelId } });
+    if (!model || !model.enabled) {
+      throw new BadRequestException('Model is not available');
+    }
+  }
 
   async findAll(userId: string) {
     return this.prisma.conversation.findMany({
@@ -51,11 +61,14 @@ export class ConversationsService {
   }
 
   async create(userId: string, data: CreateConversationDto) {
+    const modelId = data.model || (await this.appConfigService.getDefaultModelId());
+    await this.assertModelEnabled(modelId);
+
     return this.prisma.conversation.create({
       data: {
         userId,
         title: data.title || 'New Chat',
-        model: data.model || 'openai/gpt-4o',
+        model: modelId,
       },
     });
   }
@@ -71,6 +84,10 @@ export class ConversationsService {
 
     if (conversation.userId !== userId) {
       throw new ForbiddenException('You do not have permission to update this conversation');
+    }
+
+    if (data.model) {
+      await this.assertModelEnabled(data.model);
     }
 
     return this.prisma.conversation.update({

@@ -16,8 +16,7 @@ import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { SendMessageDto } from './dto/send-message.dto';
-
-const MAX_CONTEXT_MESSAGES = 50;
+import { AppConfigService } from '../app-config/app-config.service';
 
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
@@ -27,6 +26,7 @@ export class MessagesController {
     private aiService: AiService,
     private prisma: PrismaService,
     private usersService: UsersService,
+    private appConfigService: AppConfigService,
   ) {}
 
   @Post('stream')
@@ -37,6 +37,7 @@ export class MessagesController {
     @Res() res: Response,
   ) {
     const { conversationId, content, model } = body;
+    const appConfig = await this.appConfigService.getConfig();
 
     // Get conversation
     const conversation = await this.prisma.conversation.findUnique({
@@ -44,7 +45,7 @@ export class MessagesController {
       include: {
         messages: {
           orderBy: { createdAt: 'desc' },
-          take: MAX_CONTEXT_MESSAGES,
+          take: appConfig.maxContextMessages,
         },
       },
     });
@@ -79,7 +80,11 @@ export class MessagesController {
 
     // Get user's API key (decrypted)
     const userSettings = await this.usersService.getUserSettingsDecrypted(user.id);
-    const apiKey = userSettings?.openRouterApiKey ?? undefined;
+    const userApiKey = appConfig.allowUserApiKeys ? userSettings?.openRouterApiKey ?? undefined : undefined;
+    if (appConfig.requireUserApiKey && !userApiKey) {
+      return res.status(400).json({ error: 'User API key is required by server policy' });
+    }
+    const apiKey = userApiKey;
     const selectedModel = model || conversation.model || userSettings?.preferredModel || 'openai/gpt-4o';
 
     // Set SSE headers

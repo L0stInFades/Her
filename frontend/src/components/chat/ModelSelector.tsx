@@ -67,13 +67,15 @@ interface ModelSelectorProps {
   value: string;
   onChange: (modelId: string) => void;
   disabled?: boolean;
+  models?: Model[];
 }
 
-export function ModelSelector({ value, onChange, disabled = false }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, disabled = false, models }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedModel = MODELS.find((m) => m.id === value) || MODELS[0];
+  const availableModels = models && models.length > 0 ? models : MODELS;
+  const selectedModel = availableModels.find((m) => m.id === value) || availableModels[0];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -124,7 +126,7 @@ export function ModelSelector({ value, onChange, disabled = false }: ModelSelect
           )}
         >
           <div className="p-2">
-            {MODELS.map((model) => {
+            {availableModels.map((model) => {
               const isSelected = model.id === value;
 
               return (

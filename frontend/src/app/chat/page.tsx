@@ -12,16 +12,8 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useToast } from '@/components/ui/Toast';
 import { useChatShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { api } from '@/lib/api';
+import type { PublicConfig } from '@/lib/types';
 import { clsx } from 'clsx';
-
-const MODELS = [
-  { id: 'openai/gpt-4o', name: 'GPT-4o' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
-  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo' },
-  { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus' },
-  { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet' },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku' },
-];
 
 export default function ChatPage() {
   const router = useRouter();
@@ -43,6 +35,7 @@ export default function ChatPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModel, setSelectedModel] = useState('openai/gpt-4o');
+  const [availableModels, setAvailableModels] = useState<PublicConfig['models']>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -70,6 +63,13 @@ export default function ChatPage() {
 
       // Load conversations
       try {
+        // Load public config (models, policies)
+        const configRes = await api.get<PublicConfig>('/config');
+        if (configRes.success && configRes.data) {
+          setAvailableModels(configRes.data.models || []);
+          setSelectedModel(configRes.data.defaultModelId || 'openai/gpt-4o');
+        }
+
         await loadConversations();
         setIsLoading(false);
         // Use getState() to avoid stale closure
@@ -188,7 +188,8 @@ export default function ChatPage() {
       api
         .patch(`/conversations/${currentConversation.id}`, { model: modelId })
         .then(() => {
-          success(`Model changed to ${MODELS.find((m) => m.id === modelId)?.name}`);
+          const name = availableModels.find((m) => m.id === modelId)?.name || modelId;
+          success(`Model changed to ${name}`);
           // Reload conversation to update model
           const updatedConversation = {
             ...currentConversation,
@@ -276,6 +277,12 @@ export default function ChatPage() {
                 value={selectedModel}
                 onChange={handleModelChange}
                 disabled={isStreaming}
+                models={availableModels.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  provider: m.provider,
+                  description: m.description || '',
+                }))}
               />
             </div>
           </div>

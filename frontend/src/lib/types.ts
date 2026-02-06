@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name?: string;
   avatar?: string;
+  role?: 'USER' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +95,19 @@ export interface AIModel {
     prompt: number;
     completion: number;
   };
+}
+
+export interface PublicConfig {
+  maxContextMessages: number;
+  allowUserApiKeys: boolean;
+  requireUserApiKey: boolean;
+  defaultModelId: string;
+  models: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    description?: string | null;
+  }>;
 }
 
 // Store types
