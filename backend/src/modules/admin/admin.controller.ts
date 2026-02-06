@@ -6,6 +6,7 @@ import { UpdateAppConfigDto } from './dto/update-app-config.dto';
 import { UpsertAiModelDto } from './dto/upsert-model.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { BootstrapAdminDto } from './dto/bootstrap-admin.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
@@ -58,5 +59,19 @@ export class AdminController {
   async deleteModel(@Param('id') id: string) {
     const result = await this.adminService.deleteModel(id);
     return { success: true, data: result };
+  }
+
+  @Get('users')
+  @Roles('ADMIN')
+  async listUsers() {
+    const users = await this.adminService.listUsers();
+    return { success: true, data: users };
+  }
+
+  @Patch('users/:id')
+  @Roles('ADMIN')
+  async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    const user = await this.adminService.updateUser(id, dto);
+    return { success: true, data: user };
   }
 }

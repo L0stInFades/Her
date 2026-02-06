@@ -14,5 +14,14 @@ export class UpdateAppConfigDto {
   @IsOptional()
   @IsBoolean()
   requireUserApiKey?: boolean;
-}
 
+  @IsOptional()
+  @IsBoolean()
+  enforceUsageLimits?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100000000)
+  plusMonthlyUnits?: number;
+}

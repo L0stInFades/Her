@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { AppConfigService } from '../app-config/app-config.service';
+import { UsageService } from '../usage/usage.service';
 
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
@@ -27,6 +28,7 @@ export class MessagesController {
     private prisma: PrismaService,
     private usersService: UsersService,
     private appConfigService: AppConfigService,
+    private usageService: UsageService,
   ) {}
 
   @Post('stream')
@@ -38,6 +40,16 @@ export class MessagesController {
   ) {
     const { conversationId, content, model } = body;
     const appConfig = await this.appConfigService.getConfig();
+
+    // Usage limits (monthly)
+    try {
+      await this.usageService.assertWithinLimitOrThrow(user.id);
+    } catch (e: any) {
+      if (e?.code === 'QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: 'Monthly quota exceeded', data: e.snapshot });
+      }
+      return res.status(500).json({ error: 'Failed to check quota' });
+    }
 
     // Get conversation
     const conversation = await this.prisma.conversation.findUnique({
@@ -85,7 +97,12 @@ export class MessagesController {
       return res.status(400).json({ error: 'User API key is required by server policy' });
     }
     const apiKey = userApiKey;
-    const selectedModel = model || conversation.model || userSettings?.preferredModel || 'openai/gpt-4o';
+    let selectedModel = model || conversation.model || userSettings?.preferredModel || 'openai/gpt-4o';
+    // Enforce enabled models
+    const enabled = await this.appConfigService.getEnabledModels();
+    if (!enabled.some((m) => m.id === selectedModel)) {
+      selectedModel = await this.appConfigService.getDefaultModelId();
+    }
 
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -131,6 +148,11 @@ export class MessagesController {
 
           res.write('data: [DONE]\n\n');
           res.end();
+
+          // Record usage (best-effort)
+          this.usageService
+            .recordUsage({ userId: user.id, userContent: content, assistantContent: fullContent })
+            .catch(() => {});
         },
         (error) => {
           if (completed) return;

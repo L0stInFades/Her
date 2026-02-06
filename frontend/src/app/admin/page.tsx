@@ -25,11 +25,24 @@ type AppConfig = {
   maxContextMessages: number;
   allowUserApiKeys: boolean;
   requireUserApiKey: boolean;
+  enforceUsageLimits: boolean;
+  plusMonthlyUnits: number;
 };
 
 type AdminConfigPayload = {
   config: AppConfig;
   models: AiModel[];
+};
+
+type AdminUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  role: 'USER' | 'ADMIN';
+  plan: 'ART' | 'PRO_ART';
+  isBanned: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export default function AdminPage() {
@@ -41,6 +54,7 @@ export default function AdminPage() {
   const [bootstrapToken, setBootstrapToken] = useState('');
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [models, setModels] = useState<AiModel[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
 
   const [newModel, setNewModel] = useState<Partial<AiModel>>({
     enabled: true,
@@ -78,6 +92,11 @@ export default function AdminPage() {
       } else {
         throw new Error(res.error || 'Failed to load admin config');
       }
+
+      const usersRes = await api.get<AdminUser[]>('/admin/users');
+      if (usersRes.success && usersRes.data) {
+        setUsers(usersRes.data);
+      }
     } catch (e: unknown) {
       error(e instanceof Error ? e.message : 'Failed to load admin config');
     }
@@ -103,6 +122,8 @@ export default function AdminPage() {
         maxContextMessages: config.maxContextMessages,
         allowUserApiKeys: config.allowUserApiKeys,
         requireUserApiKey: config.requireUserApiKey,
+        enforceUsageLimits: config.enforceUsageLimits,
+        plusMonthlyUnits: config.plusMonthlyUnits,
       });
       if (!res.success || !res.data) throw new Error(res.error || 'Failed to save');
       success('Config saved');
@@ -143,6 +164,17 @@ export default function AdminPage() {
       await refresh();
     } catch (e: unknown) {
       error(e instanceof Error ? e.message : 'Failed to delete model');
+    }
+  }
+
+  async function updateUser(userId: string, patch: Partial<Pick<AdminUser, 'isBanned' | 'plan'>>) {
+    try {
+      const res = await api.patch<AdminUser>(`/admin/users/${userId}`, patch);
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to update user');
+      success('User updated');
+      await refresh();
+    } catch (e: unknown) {
+      error(e instanceof Error ? e.message : 'Failed to update user');
     }
   }
 
@@ -242,10 +274,31 @@ export default function AdminPage() {
                   disabled={!config.allowUserApiKeys}
                   onChange={(checked) => setConfig({ ...config, requireUserApiKey: checked })}
                 />
+                <ToggleRow
+                  label="Enforce usage limits"
+                  checked={config.enforceUsageLimits}
+                  onChange={(checked) => setConfig({ ...config, enforceUsageLimits: checked })}
+                />
                 <p className="text-xs text-warm-500 dark:text-warm-400">
                   If required, users must set their own key in Settings. Otherwise the server default key can be used.
                 </p>
               </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-warm-700 dark:text-warm-300">
+                GPT Plus monthly units baseline
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={config.plusMonthlyUnits}
+                onChange={(e) => setConfig({ ...config, plusMonthlyUnits: Number(e.target.value) })}
+                className="mt-1 w-full rounded-xl border-2 border-warm-200 bg-white px-4 py-2.5 text-warm-900 focus:border-jade-500 focus:outline-none dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50"
+              />
+              <p className="mt-1 text-xs text-warm-500 dark:text-warm-400">
+                Art quota = Plus * 2. ProArt quota = Plus * 8. Units are enforced using estimated tokens per request.
+              </p>
             </div>
 
             <div className="mt-5 flex justify-end">
@@ -389,6 +442,71 @@ export default function AdminPage() {
             </div>
           </Card>
         )}
+
+        {isAdmin && (
+          <Card variant="default" className="p-6">
+            <h2 className="text-lg font-semibold text-warm-900 dark:text-warm-50">Users</h2>
+            <p className="text-sm text-warm-600 dark:text-warm-400">Ban/unban and assign plan (Art/ProArt).</p>
+
+            <div className="mt-4 overflow-x-auto rounded-2xl border-2 border-warm-200 dark:border-warm-700">
+              <table className="min-w-full text-sm">
+                <thead className="bg-warm-50 dark:bg-warm-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Email</th>
+                    <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Role</th>
+                    <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Plan</th>
+                    <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-warm-900">
+                  {users.map((u) => (
+                    <tr key={u.id} className="border-t border-warm-200 dark:border-warm-700">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-warm-900 dark:text-warm-50">{u.email}</div>
+                        <div className="text-xs text-warm-500 dark:text-warm-400">{u.id}</div>
+                      </td>
+                      <td className="px-4 py-3 text-warm-700 dark:text-warm-300">{u.role}</td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={u.plan}
+                          onChange={(e) => updateUser(u.id, { plan: e.target.value as any })}
+                          className="rounded-xl border-2 border-warm-200 bg-white px-3 py-2 text-warm-900 focus:border-jade-500 focus:outline-none dark:border-warm-700 dark:bg-warm-800 dark:text-warm-50"
+                          disabled={u.role === 'ADMIN'}
+                          title={u.role === 'ADMIN' ? 'Do not downgrade admin plan here' : undefined}
+                        >
+                          <option value="ART">Art</option>
+                          <option value="PRO_ART">ProArt</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          className={clsx(
+                            'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
+                            u.isBanned
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-200'
+                              : 'bg-jade-100 text-jade-700 dark:bg-jade-900/30 dark:text-jade-200'
+                          )}
+                          onClick={() => updateUser(u.id, { isBanned: !u.isBanned })}
+                          disabled={u.role === 'ADMIN'}
+                          title={u.role === 'ADMIN' ? 'Do not ban admins here' : undefined}
+                        >
+                          {u.isBanned ? 'Banned' : 'Active'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {users.length === 0 && (
+                    <tr>
+                      <td className="px-4 py-6 text-warm-600 dark:text-warm-400" colSpan={4}>
+                        No users yet
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -454,4 +572,3 @@ function ToggleInline({
     </button>
   );
 }
-

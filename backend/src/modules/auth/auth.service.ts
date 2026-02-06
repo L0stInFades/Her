@@ -1,5 +1,6 @@
 import {
   Injectable,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -61,6 +62,7 @@ export class AuthService {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        plan: user.plan,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -75,6 +77,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.isBanned) {
+      throw new ForbiddenException('Account is disabled');
     }
 
     // Verify password
@@ -93,6 +99,7 @@ export class AuthService {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        plan: user.plan,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },

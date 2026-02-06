@@ -15,6 +15,11 @@ enum UserRole {
   ADMIN
 }
 
+enum UserPlan {
+  ART
+  PRO_ART
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -22,6 +27,8 @@ model User {
   name          String?
   avatar        String?
   role          UserRole  @default(USER)
+  plan          UserPlan  @default(ART)
+  isBanned      Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -29,6 +36,7 @@ model User {
   conversations Conversation[]
   settings      UserSettings?
   refreshTokens RefreshToken[]
+  usage         UsagePeriod[]
 
   @@map("users")
 }
@@ -112,8 +120,27 @@ model AppConfig {
   maxContextMessages Int      @default(50)
   allowUserApiKeys   Boolean  @default(true)
   requireUserApiKey  Boolean  @default(false)
+  enforceUsageLimits Boolean  @default(true)
+  plusMonthlyUnits   Int      @default(1000)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@map("app_config")
+}
+
+model UsagePeriod {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // YYYY-MM in UTC
+  period              String
+  unitsUsed           Int      @default(0)
+  requestsUsed        Int      @default(0)
+  estimatedTokensUsed Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, period])
+  @@index([period])
+  @@map("usage_periods")
 }

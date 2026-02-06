@@ -19,6 +19,8 @@ export class AppConfigController {
         maxContextMessages: config.maxContextMessages,
         allowUserApiKeys: config.allowUserApiKeys,
         requireUserApiKey: config.requireUserApiKey,
+        enforceUsageLimits: config.enforceUsageLimits,
+        plusMonthlyUnits: config.plusMonthlyUnits,
         defaultModelId,
         models: models.map((m) => ({
           id: m.id,
@@ -30,4 +32,3 @@ export class AppConfigController {
     };
   }
 }
-

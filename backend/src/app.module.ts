@@ -11,6 +11,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AppConfigModule } from './modules/app-config/app-config.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { UsageModule } from './modules/usage/usage.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AdminModule } from './modules/admin/admin.module';
     AiModule,
     AppConfigModule,
     AdminModule,
+    UsageModule,
   ],
   controllers: [],
   providers: [

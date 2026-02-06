@@ -5,6 +5,7 @@ export interface User {
   name?: string;
   avatar?: string;
   role?: 'USER' | 'ADMIN';
+  plan?: 'ART' | 'PRO_ART';
   createdAt: string;
   updatedAt: string;
 }
@@ -101,6 +102,8 @@ export interface PublicConfig {
   maxContextMessages: number;
   allowUserApiKeys: boolean;
   requireUserApiKey: boolean;
+  enforceUsageLimits: boolean;
+  plusMonthlyUnits: number;
   defaultModelId: string;
   models: Array<{
     id: string;
@@ -108,6 +111,15 @@ export interface PublicConfig {
     provider: string;
     description?: string | null;
   }>;
+}
+
+export interface UsageSnapshot {
+  period: string;
+  plan: 'ART' | 'PRO_ART';
+  monthlyUnitLimit: number;
+  unitsUsed: number;
+  requestsUsed: number;
+  estimatedTokensUsed: number;
 }
 
 // Store types

@@ -24,6 +24,8 @@ export class AppConfigService {
         maxContextMessages: 50,
         allowUserApiKeys: true,
         requireUserApiKey: false,
+        enforceUsageLimits: true,
+        plusMonthlyUnits: 1000,
       },
       update: {},
     });
@@ -115,4 +117,3 @@ export class AppConfigService {
     this.enabledModelsCache = null;
   }
 }
-

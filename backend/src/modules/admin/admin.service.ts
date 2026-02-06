@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AppConfigService } from '../app-config/app-config.service';
 import { UpdateAppConfigDto } from './dto/update-app-config.dto';
 import { UpsertAiModelDto } from './dto/upsert-model.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class AdminService {
@@ -58,6 +59,8 @@ export class AdminService {
         maxContextMessages: dto.maxContextMessages ?? 50,
         allowUserApiKeys: dto.allowUserApiKeys ?? true,
         requireUserApiKey: dto.requireUserApiKey ?? false,
+        enforceUsageLimits: dto.enforceUsageLimits ?? true,
+        plusMonthlyUnits: dto.plusMonthlyUnits ?? 1000,
       },
       update: dto,
     });
@@ -149,5 +152,46 @@ export class AdminService {
 
     this.appConfigService.clearCache();
     return { success: true };
+  }
+
+  async listUsers() {
+    return this.prisma.user.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        plan: true,
+        isBanned: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async updateUser(id: string, dto: UpdateUserDto) {
+    const plan = dto.plan;
+    if (plan && plan !== 'ART' && plan !== 'PRO_ART') {
+      throw new BadRequestException('Invalid plan');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        isBanned: dto.isBanned,
+        plan: plan as any,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        plan: true,
+        isBanned: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 }

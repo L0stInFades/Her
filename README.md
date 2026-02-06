@@ -35,6 +35,8 @@ Admin capabilities:
 - Enable/disable models and set the default model
 - Control context size (`maxContextMessages`)
 - Control user API key policy (`allowUserApiKeys`, `requireUserApiKey`)
+- Manage users (list, ban/unban, assign plan Art/ProArt)
+- Usage limits (monthly quota enforced at `/api/messages/stream`)
 
 > Your warm, intelligent AI companion
 

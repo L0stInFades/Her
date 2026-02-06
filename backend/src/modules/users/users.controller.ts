@@ -31,6 +31,7 @@ export class UsersController {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
+        plan: user.plan,
         createdAt: user.createdAt,
       },
     };
