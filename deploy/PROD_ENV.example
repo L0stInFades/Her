@@ -1,0 +1,23 @@
+# Required
+DOMAIN=her.example.com
+POSTGRES_PASSWORD=change-me-long-random
+JWT_SECRET=change-me-openssl-rand-hex-32
+ENCRYPTION_KEY=change-me-openssl-rand-hex-32
+
+# Optional
+POSTGRES_DB=her_db
+POSTGRES_USER=postgres
+JWT_EXPIRES_IN=15m
+OPENROUTER_API_KEY=
+OPENROUTER_SITE_URL=https://her.example.com
+OPENROUTER_APP_NAME=Her
+CORS_ORIGIN=https://her.example.com
+
+# If you deploy behind the same domain, you can leave this empty.
+# If you host API on a different origin, set it to that origin without /api.
+NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_APP_NAME=Her
+
+# Not recommended for mature prod, but useful for first boot:
+AUTO_DB_PUSH=0
+

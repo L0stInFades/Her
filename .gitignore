@@ -37,9 +37,6 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
-# Prisma
-prisma/migrations/
-
 # IDE
 .vscode/
 .idea/

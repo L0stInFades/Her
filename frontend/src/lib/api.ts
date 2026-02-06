@@ -1,7 +1,14 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import type { ApiResponse } from './types';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api';
+function computeApiBaseUrl(): string {
+  const origin = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
+  // Prefer relative by default so same-origin deployments "just work"
+  // without needing build-time env injection.
+  return origin ? `${origin}/api` : '/api';
+}
+
+const API_URL = computeApiBaseUrl();
 
 class ApiClient {
   private client: AxiosInstance;

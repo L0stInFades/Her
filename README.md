@@ -1,5 +1,29 @@
 # Her
 
+## Production Deploy (One Command, Docker Compose)
+
+Prereqs:
+- A Linux server with Docker + Docker Compose
+- Your domain `A` record points to the server
+- Ports `80` and `443` open
+
+1) Clone and configure:
+```bash
+git clone https://github.com/L0stInFades/Her.git
+cd Her
+cp deploy/PROD_ENV.example .env
+${EDITOR:-nano} .env
+```
+
+2) Start everything (HTTPS via Caddy):
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Notes:
+- Frontend defaults to same-origin `/api` so you can keep `NEXT_PUBLIC_API_URL` empty.
+- For first boot, you can set `AUTO_DB_PUSH=1` in `.env` to auto-apply the Prisma schema.
+
 > Your warm, intelligent AI companion
 
 Her is a modern AI chat application with a warm, elegant design inspired by the concept of "温润如玉" (warm and smooth like jade). Experience a chat companion that feels like conversing with a wise, understanding friend.

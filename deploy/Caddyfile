@@ -1,0 +1,12 @@
+{$DOMAIN} {
+  encode zstd gzip
+
+  @api path /api/*
+  reverse_proxy @api backend:3001 {
+    # Help Server-Sent Events (SSE) flush promptly
+    flush_interval -1
+  }
+
+  reverse_proxy frontend:3000
+}
+

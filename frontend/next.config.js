@@ -4,11 +4,12 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Her',
-  },
   async headers() {
+    const connectSrc = ["'self'"];
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      connectSrc.push(process.env.NEXT_PUBLIC_API_URL);
+    }
+
     return [
       {
         source: '/(.*)',
@@ -37,7 +38,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
-              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}`,
+              `connect-src ${connectSrc.join(' ')}`,
               "frame-ancestors 'none'",
             ].join('; '),
           },
