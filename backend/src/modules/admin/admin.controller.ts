@@ -74,4 +74,18 @@ export class AdminController {
     const user = await this.adminService.updateUser(id, dto);
     return { success: true, data: user };
   }
+
+  @Post('users/:id/logout-all')
+  @Roles('ADMIN')
+  async logoutAll(@Param('id') id: string) {
+    const data = await this.adminService.logoutAll(id);
+    return { success: true, data };
+  }
+
+  @Post('users/:id/usage/reset')
+  @Roles('ADMIN')
+  async resetUsage(@Param('id') id: string) {
+    const data = await this.adminService.resetCurrentUsage(id);
+    return { success: true, data };
+  }
 }

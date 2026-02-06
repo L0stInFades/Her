@@ -205,4 +205,43 @@ export class AdminService {
 
     return updated;
   }
+
+  async logoutAll(userId: string) {
+    // Ensure user exists for nicer errors
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const result = await this.prisma.refreshToken.deleteMany({ where: { userId } });
+    return { revokedSessions: result.count };
+  }
+
+  async resetCurrentUsage(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const period = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}`;
+
+    const row = await this.prisma.usagePeriod.upsert({
+      where: { userId_period: { userId, period } },
+      create: {
+        userId,
+        period,
+        unitsUsed: 0,
+        requestsUsed: 0,
+        estimatedTokensUsed: 0,
+      },
+      update: {
+        unitsUsed: 0,
+        requestsUsed: 0,
+        estimatedTokensUsed: 0,
+      },
+    });
+
+    return {
+      period: row.period,
+      unitsUsed: row.unitsUsed,
+      requestsUsed: row.requestsUsed,
+      estimatedTokensUsed: row.estimatedTokensUsed,
+    };
+  }
 }

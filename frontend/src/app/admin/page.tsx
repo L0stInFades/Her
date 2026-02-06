@@ -183,6 +183,30 @@ export default function AdminPage() {
     }
   }
 
+  async function forceLogout(userId: string) {
+    if (!confirm('Revoke all sessions for this user? They will be logged out on next request.')) return;
+    try {
+      const res = await api.post<{ revokedSessions: number }>(`/admin/users/${userId}/logout-all`, {});
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to revoke sessions');
+      success(`Revoked ${res.data.revokedSessions} session(s)`);
+      await refresh();
+    } catch (e: unknown) {
+      error(e instanceof Error ? e.message : 'Failed to revoke sessions');
+    }
+  }
+
+  async function resetUsage(userId: string) {
+    if (!confirm("Reset this user's current-month usage to 0?")) return;
+    try {
+      const res = await api.post<{ period: string }>(`/admin/users/${userId}/usage/reset`, {});
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to reset usage');
+      success(`Usage reset for ${res.data.period}`);
+      await refresh();
+    } catch (e: unknown) {
+      error(e instanceof Error ? e.message : 'Failed to reset usage');
+    }
+  }
+
   const sortedModels = useMemo(() => {
     return [...models].sort((a, b) => {
       if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
@@ -462,6 +486,7 @@ export default function AdminPage() {
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Plan</th>
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Usage</th>
                     <th className="px-4 py-3 text-left font-semibold text-warm-900 dark:text-warm-50">Status</th>
+                    <th className="px-4 py-3 text-right font-semibold text-warm-900 dark:text-warm-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-warm-900">
@@ -507,11 +532,21 @@ export default function AdminPage() {
                           {u.isBanned ? 'Banned' : 'Active'}
                         </button>
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex flex-wrap justify-end gap-2">
+                          <Button variant="ghost" onClick={() => resetUsage(u.id)}>
+                            Reset usage
+                          </Button>
+                          <Button variant="ghost" onClick={() => forceLogout(u.id)}>
+                            Force logout
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td className="px-4 py-6 text-warm-600 dark:text-warm-400" colSpan={5}>
+                      <td className="px-4 py-6 text-warm-600 dark:text-warm-400" colSpan={6}>
                         No users yet
                       </td>
                     </tr>

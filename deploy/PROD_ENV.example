@@ -21,3 +21,7 @@ NEXT_PUBLIC_APP_NAME=Her
 
 # Not recommended for mature prod, but useful for first boot:
 AUTO_DB_PUSH=0
+
+# Streaming guardrails
+# Max parallel /api/messages/stream requests per user (in-memory, per backend instance)
+MAX_CONCURRENT_STREAMS_PER_USER=2

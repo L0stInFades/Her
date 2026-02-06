@@ -18,6 +18,7 @@ import { UsersService } from '../users/users.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { AppConfigService } from '../app-config/app-config.service';
 import { UsageService } from '../usage/usage.service';
+import { ActiveStreamsService } from './active-streams.service';
 
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
@@ -29,6 +30,7 @@ export class MessagesController {
     private usersService: UsersService,
     private appConfigService: AppConfigService,
     private usageService: UsageService,
+    private activeStreams: ActiveStreamsService,
   ) {}
 
   @Post('stream')
@@ -38,6 +40,21 @@ export class MessagesController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
+    const acquired = this.activeStreams.tryAcquire(user.id);
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      this.activeStreams.release(user.id);
+    };
+
+    if (!acquired.ok) {
+      return res.status(429).json({
+        error: 'Too many concurrent streams',
+        data: { active: acquired.active, max: acquired.max },
+      });
+    }
+
     const { conversationId, content, model } = body;
     const appConfig = await this.appConfigService.getConfig();
 
@@ -45,6 +62,7 @@ export class MessagesController {
     try {
       await this.usageService.assertWithinLimitOrThrow(user.id);
     } catch (e: any) {
+      release();
       if (e?.code === 'QUOTA_EXCEEDED') {
         return res.status(429).json({ error: 'Monthly quota exceeded', data: e.snapshot });
       }
@@ -63,10 +81,12 @@ export class MessagesController {
     });
 
     if (!conversation) {
+      release();
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
     if (conversation.userId !== user.id) {
+      release();
       return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -96,6 +116,7 @@ export class MessagesController {
     const userApiKey = canByok ? userSettings?.openRouterApiKey ?? undefined : undefined;
     // Server policy: can require BYOK for ProArt while still allowing Art to use the server key.
     if (appConfig.requireUserApiKey && user.plan === 'PRO_ART' && !userApiKey) {
+      release();
       return res.status(400).json({ error: 'User API key is required for ProArt by server policy' });
     }
     const apiKey = userApiKey;
@@ -119,6 +140,7 @@ export class MessagesController {
     const abortController = new AbortController();
     req.on('close', () => {
       abortController.abort();
+      release();
     });
 
     try {
@@ -134,6 +156,7 @@ export class MessagesController {
         () => {
           if (completed) return;
           completed = true;
+          release();
 
           // Stream complete - save the assistant message
           this.prisma.message
@@ -159,6 +182,7 @@ export class MessagesController {
         (error) => {
           if (completed) return;
           completed = true;
+          release();
 
           console.error('Stream error:', error?.message || 'Unknown error');
           res.write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
@@ -169,6 +193,7 @@ export class MessagesController {
     } catch (error) {
       if (completed) return;
       completed = true;
+      release();
 
       console.error('AI error:', error?.message || 'Unknown error');
       res.write(`data: ${JSON.stringify({ error: 'Failed to generate response' })}\n\n`);
