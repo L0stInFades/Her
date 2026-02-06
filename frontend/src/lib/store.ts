@@ -43,12 +43,15 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
     if (response.success && response.data) {
       const { user } = response.data;
-      // Only store if it's a real user (id is not empty = not an enumeration response)
-      if (user.id) {
-        set({ user, isAuthenticated: true });
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(user));
-        }
+      // If the backend returns an "enumeration-safe" success, we won't have tokens set.
+      // Surface the generic message to the user so they can log in instead of being sent into /chat unauthenticated.
+      if (!user.id) {
+        throw new Error(response.message || 'Registration completed. Please sign in.');
+      }
+
+      set({ user, isAuthenticated: true });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(user));
       }
     } else {
       throw new Error(response.error || 'Registration failed');
